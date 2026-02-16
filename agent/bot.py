@@ -7,6 +7,7 @@ Prodigy Content Agent — Интерактивный Telegram бот
   /script А         — готовый сценарий для формата А-З
   /reel [тема]      — сценарий по описанию темы
   /hook [тема]      — 7 вариантов хуков
+  /cover ФОРМАТ|ХУК — сгенерировать обложку рилса (DALL-E 3)
   /plan             — план на следующую неделю
   /week             — расписание постов на эту неделю
   /stats            — статистика рилсов
@@ -25,15 +26,55 @@ from datetime import datetime
 import requests
 from dotenv import load_dotenv
 import anthropic
+import openai as _openai
 
 # ── Импорт общих данных из main.py ───────────────────────────────────────────
 from main import BRAND, load_data, save_data, FORMAT_NAMES, generate_plan, analyze
 
 load_dotenv()
 
-TG_TOKEN  = os.getenv("TELEGRAM_BOT_TOKEN", "")
-claude    = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
-BASE_DIR  = Path(__file__).parent
+TG_TOKEN     = os.getenv("TELEGRAM_BOT_TOKEN", "")
+claude       = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+openai_client = _openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
+BASE_DIR     = Path(__file__).parent
+
+
+# ── Стили обложек по форматам для DALL-E промптов ────────────────────────────
+# Базируются на визуальном стиле бренда: #0D0D0D фон, #3EA832 акцент, Montserrat Bold
+COVER_STYLES: dict[str, str] = {
+    "А": (
+        "A frustrated Russian-speaking entrepreneur staring intensely at a laptop screen in a dark "
+        "modern office. Dramatic side lighting. Near-black background. Stressed but determined expression."
+    ),
+    "Б": (
+        "A minimalist dark educational slide design. Three items with bright green checkmark icons "
+        "on a near-black background. Clean structured layout, premium modern aesthetic."
+    ),
+    "В": (
+        "Authentic behind-the-scenes workspace: laptop showing a Shopify admin dashboard, a coffee cup, "
+        "notebook with handwritten notes. Warm dim lighting, dark cozy atmosphere."
+    ),
+    "Г": (
+        "A bold revenue growth chart line going sharply upward on a dark background, bright green line. "
+        "Data numbers visible. Before-and-after split composition showing business transformation."
+    ),
+    "Д": (
+        "A relatable humorous moment: an entrepreneur reacting with exaggerated surprise or disbelief "
+        "at their laptop. Meme-style but professional. Dark background, candid expressive pose."
+    ),
+    "Е": (
+        "Stark, confrontational text-heavy composition on near-black background. Bold high-contrast "
+        "design, provocative energy. Minimal graphics, pure typography power. No faces."
+    ),
+    "Ж": (
+        "Cinematic first-person POV shot: looking down at a Shopify store on a laptop screen, "
+        "hands on keyboard visible. Shallow depth of field, dark moody atmosphere, immersive angle."
+    ),
+    "З": (
+        "A Shopify website mockup on a dark screen being analyzed with annotation arrows, red and green "
+        "markers highlighting problems and fixes. Analytical audit UI aesthetic, clean and professional."
+    ),
+}
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -48,6 +89,19 @@ def tg_send(chat_id: int, text: str):
             requests.post(url, json={"chat_id": chat_id, "text": chunk}, timeout=15)
         except Exception as e:
             print(f"Telegram ошибка: {e}")
+
+
+def tg_send_photo(chat_id: int, image_url: str, caption: str = ""):
+    """Отправить фото в Telegram по URL."""
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendPhoto"
+    try:
+        requests.post(url, json={
+            "chat_id": chat_id,
+            "photo": image_url,
+            "caption": caption,
+        }, timeout=30)
+    except Exception as e:
+        print(f"Telegram photo ошибка: {e}")
 
 
 def tg_get_updates(offset: int = 0) -> list:
@@ -71,6 +125,42 @@ def ask_claude(prompt: str, max_tokens: int = 1800) -> str:
         messages=[{"role": "user", "content": prompt}]
     )
     return msg.content[0].text
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# DALL-E COVER GENERATION
+# ═════════════════════════════════════════════════════════════════════════════
+
+def generate_cover_image(hook: str, fmt: str) -> str:
+    """Генерирует обложку рилса через DALL-E 3. Возвращает URL изображения."""
+    style = COVER_STYLES.get(fmt, COVER_STYLES["А"])
+
+    prompt = f"""Instagram Reels vertical cover image (9:16 portrait) for @prodigylab.agency — \
+a Shopify agency for Russian-speaking entrepreneurs in the USA.
+
+Visual composition: {style}
+
+Text overlay on the image — display this exact Russian text as the main bold white headline:
+"{hook}"
+
+Design requirements:
+- Aspect ratio: 9:16 vertical portrait
+- Background: near-black (#0D0D0D) or very dark gray
+- Primary accent color: bright green (#3EA832) for positive/solution elements
+- Text: white (#FFFFFF), bold uppercase, large Montserrat-style sans-serif font
+- The Russian text "{hook}" must be prominently displayed as the main headline
+- Minimal, modern, premium agency aesthetic
+- No watermarks, no logos, no decorative borders
+- Cinematic quality lighting and composition"""
+
+    response = openai_client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1792",
+        quality="standard",
+        n=1,
+    )
+    return response.data[0].url
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -140,6 +230,7 @@ def cmd_help() -> str:
         "/script А         — сценарий для формата (А Б В Г Д Е Ж З)\n"
         "/reel [тема]      — сценарий по описанию темы\n"
         "/hook [тема]      — 7 вариантов хуков\n"
+        "/cover А|ХУК      — обложка рилса через DALL-E 3\n"
         "/plan             — план на следующую неделю\n"
         "/week             — расписание постов на эту неделю\n"
         "/stats            — статистика рилсов\n"
@@ -151,6 +242,7 @@ def cmd_help() -> str:
         "/script Д\n"
         "/reel почему падает конверсия\n"
         "/hook брошенная корзина\n"
+        "/cover А | ЛЬЁТЕ РЕКЛАМУ В ДЫРКУ?\n"
         "/analyze @rival | ТИЛЬДА УБИВАЕТ БИЗНЕС | 50k views | провокация\n"
         "/add А | ЛЬЁТЕ РЕКЛАМУ В ДЫРКУ? | 225 | 7 | 0 | 0 | 0"
     )
@@ -174,7 +266,7 @@ def cmd_script(fmt_arg: str) -> str:
         "З": "Хук с цифрой→Screen разбор→CTA бесплатного аудита. 45-60 сек.",
     }
 
-    return ask_claude(f"""
+    script = ask_claude(f"""
 Ты — сценарист Instagram Reels @prodigylab.agency.
 
 {BRAND}
@@ -199,13 +291,14 @@ CTA: [точная фраза]
 
 Живой разговорный язык. Без рекламных штампов.
 """, max_tokens=1500)
+    return script + f"\n\n---\nГенерировать обложку? Напиши:\n/cover {fmt} | [ХУК из сценария]"
 
 
 def cmd_reel(topic: str) -> str:
     if not topic.strip():
         return "Укажи тему: /reel конверсия магазина упала"
 
-    return ask_claude(f"""
+    script = ask_claude(f"""
 Ты — сценарист Instagram Reels @prodigylab.agency.
 
 {BRAND}
@@ -228,6 +321,7 @@ CTA:
 МУЗЫКА:
 РЕКВИЗИТ:
 """, max_tokens=1500)
+    return script + "\n\n---\nГенерировать обложку? Напиши:\n/cover ФОРМАТ | [ХУК из сценария]"
 
 
 def cmd_hooks(topic: str) -> str:
@@ -349,6 +443,51 @@ def cmd_analyze(description: str) -> str:
 """, max_tokens=900)
 
 
+def cmd_cover(args: str, chat_id: int) -> str:
+    """Генерирует обложку рилса через DALL-E 3 и отправляет фото в Telegram."""
+    if not args.strip():
+        return (
+            "Укажи формат и хук через |:\n"
+            "/cover ФОРМАТ | ХУК\n\n"
+            "Примеры:\n"
+            "/cover А | ЛЬЁТЕ РЕКЛАМУ В ДЫРКУ?\n"
+            "/cover Е | ТИЛЬДА УБИВАЕТ БИЗНЕС\n"
+            "/cover Д | POV: ТЫ НАНЯЛ ФРИЛАНСЕРА\n\n"
+            "Форматы: А Б В Г Д Е Ж З\n"
+            "Результат: вертикальная 9:16 обложка в стиле бренда"
+        )
+
+    parts = [p.strip() for p in args.split("|", 1)]
+    if len(parts) == 2:
+        fmt  = parts[0].upper()
+        hook = parts[1]
+    else:
+        fmt  = "А"
+        hook = args.strip()
+
+    if fmt not in FORMAT_NAMES:
+        fmt = "А"
+
+    if not hook:
+        return "Укажи текст хука — он будет напечатан на обложке."
+
+    if not os.getenv("OPENAI_API_KEY"):
+        return "OPENAI_API_KEY не задан в .env — добавь ключ и перезапусти бота."
+
+    try:
+        image_url = generate_cover_image(hook, fmt)
+        caption   = f"[{fmt}] {hook[:80]}"
+        tg_send_photo(chat_id, image_url, caption=caption)
+        return (
+            f"Обложка готова!\n\n"
+            f"Формат: {fmt} — {FORMAT_NAMES[fmt]}\n"
+            f"Хук: «{hook}»\n\n"
+            "Не нравится? Пришли команду ещё раз — DALL-E генерирует каждый раз новый вариант."
+        )
+    except Exception as e:
+        return f"Ошибка генерации: {e}"
+
+
 def cmd_add(args: str, data: dict) -> str:
     """Добавить рилс в базу. Формат: ФОРМАТ | ХУК | VIEWS | LIKES | SAVES | SHARES | COMMENTS"""
     if not args.strip():
@@ -412,7 +551,7 @@ def cmd_add(args: str, data: dict) -> str:
 # DISPATCHER
 # ═════════════════════════════════════════════════════════════════════════════
 
-def dispatch(text: str, data: dict) -> str | None:
+def dispatch(text: str, data: dict, chat_id: int = 0) -> str | None:
     text = text.strip()
     if not text.startswith("/"):
         return None
@@ -428,6 +567,7 @@ def dispatch(text: str, data: dict) -> str | None:
         "/reel":    lambda: cmd_reel(args),
         "/hook":    lambda: cmd_hooks(args),
         "/hooks":   lambda: cmd_hooks(args),
+        "/cover":   lambda: cmd_cover(args, chat_id),
         "/plan":    lambda: cmd_plan(data),
         "/week":    lambda: cmd_week(),
         "/stats":   lambda: cmd_stats(data),
@@ -475,7 +615,7 @@ def run():
                 data = load_data()
                 tg_send(chat_id, "⏳ Генерирую...")
 
-                reply = dispatch(text, data)
+                reply = dispatch(text, data, chat_id)
                 if reply:
                     tg_send(chat_id, reply)
                     print(f"  → отправлено ({len(reply)} символов)")
