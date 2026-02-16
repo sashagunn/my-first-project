@@ -1,0 +1,175 @@
+{
+  "reels": [
+    {
+      "id": "reel_existing_01",
+      "date": "2026-02-16",
+      "format": "А",
+      "format_name": "Боль",
+      "hook": "ВАШ МАГАЗИН ПРОДАЁТ ТОЛЬКО В ОДНОМ МЕСТЕ?",
+      "notes": "AI-картинка рынка, без лица",
+      "metrics": {
+        "views": 258,
+        "likes": 0,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_02",
+      "date": "2026-02-16",
+      "format": "А",
+      "format_name": "Боль",
+      "hook": "ВЫ ДУМАЕТЕ, ЧТО МАСШТАБИРУЕТЕСЬ? НО ПРИБЫЛЬ НЕ РАСТЁТ.",
+      "notes": "Лицо в кадре, ноутбук, городской фон",
+      "metrics": {
+        "views": 252,
+        "likes": 5,
+        "comments": 1,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_03",
+      "date": "2026-02-16",
+      "format": "А",
+      "format_name": "Боль",
+      "hook": "ЛЬЁТЕ РЕКЛАМУ В ДЫРКУ?",
+      "notes": "AI-картинка воронки с деньгами",
+      "metrics": {
+        "views": 225,
+        "likes": 7,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_04",
+      "date": "2026-02-16",
+      "format": "А",
+      "format_name": "Боль",
+      "hook": "ПРИНИМАЕТЕ ОПЛАТУ ВСЕМИ СПОСОБАМИ?",
+      "notes": "Лицо в кадре, держу карты Apple Pay / Visa / PayPal",
+      "metrics": {
+        "views": 184,
+        "likes": 11,
+        "comments": 0,
+        "saves": 0,
+        "shares": 1,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_05",
+      "date": "2026-02-16",
+      "format": "А",
+      "format_name": "Боль",
+      "hook": "КЛИЕНТ ПОКУПАЕТ В ОДНО КАСАНИЕ",
+      "notes": "AI-картинка Instagram Shop, Nike кроссовки",
+      "metrics": {
+        "views": 173,
+        "likes": 0,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_06",
+      "date": "2026-02-16",
+      "format": "А",
+      "format_name": "Боль",
+      "hook": "НЕТ ПОВТОРНЫХ ПРОДАЖ? ПРОБЛЕМА НЕ В ЦЕНЕ.",
+      "notes": "Лицо в кадре, почёсываю голову",
+      "metrics": {
+        "views": 168,
+        "likes": 0,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_07",
+      "date": "2026-02-16",
+      "format": "Б",
+      "format_name": "Образование",
+      "hook": "SHOPIFY = ПОЛНАЯ ПЛАТЁЖНАЯ СИСТЕМА",
+      "notes": "Тёмный фон, список платёжных систем с зелёными галочками",
+      "metrics": {
+        "views": 184,
+        "likes": 11,
+        "comments": 0,
+        "saves": 0,
+        "shares": 1,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_08",
+      "date": "2026-02-16",
+      "format": "Г",
+      "format_name": "Кейс",
+      "hook": "SHOPIFY ПОД КЛЮЧ ЗА 14 ДНЕЙ",
+      "notes": "Лицо в кадре с чеклистом: Сайт, Платежи, Instagram Shop, Структура, Система",
+      "metrics": {
+        "views": 123,
+        "likes": 0,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_09",
+      "date": "2026-02-16",
+      "format": "Е",
+      "format_name": "Провокация",
+      "hook": "ХВАТИТ ПРОДАВАТЬ В ПЕРЕПИСКАХ. DM — ЭТО НЕ БИЗНЕС.",
+      "notes": "Тёмный фон, только текст",
+      "metrics": {
+        "views": 123,
+        "likes": 9,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 3
+      }
+    },
+    {
+      "id": "reel_existing_10",
+      "date": "2026-02-14",
+      "format": "Д",
+      "format_name": "Юмор",
+      "hook": "С ДНЁМ СВЯТОГО ВАЛЕНТИНА",
+      "notes": "Зелёное сердце, золотые монеты — не в тему аудитории",
+      "metrics": {
+        "views": 96,
+        "likes": 0,
+        "comments": 0,
+        "saves": 0,
+        "shares": 0,
+        "reach": 0,
+        "days_live": 2
+      }
+    }
+  ],
+  "last_updated": "2026-02-16T00:00:00"
+}

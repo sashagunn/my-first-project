@@ -1,0 +1,19 @@
+# Секреты — НИКОГДА не пушить
+agent/.env
+*.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+.venv/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
