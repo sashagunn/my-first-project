@@ -15,8 +15,11 @@ Prodigy Content Agent — Интерактивный Telegram бот
   /analyze [данные] — разбор поста конкурента
   /add [данные]     — добавить рилс в базу
   /help             — список команд
+
+  🎤 Голосовые сообщения — бот распознаёт через Whisper и роутит в нужную команду
 """
 
+import io
 import json
 import os
 import time
@@ -114,6 +117,29 @@ def tg_get_updates(offset: int = 0) -> list:
         return []
 
 
+def transcribe_voice(file_id: str) -> str:
+    """Скачать голосовое с Telegram и транскрибировать через Whisper. Возвращает текст."""
+    # 1. Получаем путь к файлу
+    get_file_url = f"https://api.telegram.org/bot{TG_TOKEN}/getFile"
+    resp = requests.get(get_file_url, params={"file_id": file_id}, timeout=10)
+    file_path = resp.json()["result"]["file_path"]
+
+    # 2. Скачиваем OGG файл
+    download_url = f"https://api.telegram.org/file/bot{TG_TOKEN}/{file_path}"
+    audio_resp = requests.get(download_url, timeout=30)
+    audio_bytes = audio_resp.content
+
+    # 3. Транскрибируем через Whisper
+    audio_file = io.BytesIO(audio_bytes)
+    audio_file.name = "voice.ogg"
+    result = openai_client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+        language="ru",
+    )
+    return result.text
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 # CLAUDE
 # ═════════════════════════════════════════════════════════════════════════════
@@ -125,6 +151,39 @@ def ask_claude(prompt: str, max_tokens: int = 1800) -> str:
         messages=[{"role": "user", "content": prompt}]
     )
     return msg.content[0].text
+
+
+def voice_to_command(transcription: str) -> str:
+    """Claude конвертирует голосовой запрос в /команду для dispatch()."""
+    result = ask_claude(f"""Преобразуй запрос пользователя в команду бота @prodigylab.agency.
+
+Запрос: «{transcription}»
+
+Доступные команды (верни ТОЛЬКО одну строку начиная с /):
+/script [А-З]                        — сценарий рилса по формату
+/reel [тема]                          — сценарий по свободной теме
+/hook [тема]                          — 7 вариантов хуков
+/cover [ФОРМАТ] | [хук ЗАГЛАВНЫМИ]   — обложка рилса
+/plan                                 — план на следующую неделю
+/week                                 — расписание на эту неделю
+/stats                                — статистика рилсов
+/trends                               — тренды e-commerce
+/analyze [@user | хук | views | почему] — разбор конкурента
+/add [ФОРМАТ | хук | views | likes | saves | shares | comments] — добавить рилс
+/unknown                              — если не удалось определить команду
+
+Примеры:
+«сделай сценарий для формата Д» → /script Д
+«напиши рилс про брошенную корзину» → /reel брошенная корзина
+«придумай хуки для темы конверсия» → /hook конверсия
+«сгенерируй обложку формат А с хуком ЛЬЁТЕ РЕКЛАМУ В ДЫРКУ» → /cover А | ЛЬЁТЕ РЕКЛАМУ В ДЫРКУ?
+«какие тренды на этой неделе» → /trends
+«покажи мою статистику» → /stats
+«составь план на неделю» → /week
+
+Верни ТОЛЬКО строку команды, без объяснений и лишних слов.
+""", max_tokens=100)
+    return result.strip()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -600,22 +659,47 @@ def run():
             updates = tg_get_updates(offset)
 
             for upd in updates:
-                offset = upd["update_id"] + 1
-                msg    = upd.get("message", {})
-                text   = msg.get("text", "")
-                chat   = msg.get("chat", {})
+                offset  = upd["update_id"] + 1
+                msg     = upd.get("message", {})
+                text    = msg.get("text", "")
+                voice   = msg.get("voice")
+                chat    = msg.get("chat", {})
                 chat_id = chat.get("id")
 
-                if not text or not chat_id:
+                if not chat_id or (not text and not voice):
                     continue
 
                 sender = chat.get("first_name", "")
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] {sender}: {text[:60]}")
+                data   = load_data()
 
-                data = load_data()
-                tg_send(chat_id, "⏳ Генерирую...")
+                # ── Голосовое сообщение ───────────────────────────────────
+                if voice:
+                    duration = voice.get("duration", 0)
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] {sender}: [голосовое {duration}с]")
+                    tg_send(chat_id, "🎤 Распознаю голос...")
+                    try:
+                        transcription = transcribe_voice(voice["file_id"])
+                        print(f"  → Whisper: «{transcription[:70]}»")
+                        tg_send(chat_id, f"Распознал: «{transcription}»\n\n⏳ Генерирую...")
+                        command = voice_to_command(transcription)
+                        print(f"  → Команда: {command}")
+                        if "/unknown" in command.lower() or not command.startswith("/"):
+                            reply = (
+                                f"Не понял запрос: «{transcription}»\n\n"
+                                "Попробуй ещё раз или напиши команду текстом.\n"
+                                "Напиши /help — список всех команд."
+                            )
+                        else:
+                            reply = dispatch(command, data, chat_id)
+                    except Exception as e:
+                        reply = f"Ошибка распознавания голоса: {e}"
 
-                reply = dispatch(text, data, chat_id)
+                # ── Текстовое сообщение ───────────────────────────────────
+                else:
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] {sender}: {text[:60]}")
+                    tg_send(chat_id, "⏳ Генерирую...")
+                    reply = dispatch(text, data, chat_id)
+
                 if reply:
                     tg_send(chat_id, reply)
                     print(f"  → отправлено ({len(reply)} символов)")
